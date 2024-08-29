@@ -1,22 +1,27 @@
-"""
-URL configuration for social project.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
 from django.urls import path
+from fb import views
+from django.conf import settings
+from django.conf.urls.static import static
+
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-]
+    path('register/',views.RegisterView.as_view()),
+    path('login/',views.LoginView.as_view()),
+    path('profile/',views.ProfileView.as_view()),
+    path('profile/<int:pk>/',views.ProfileView.as_view()),
+    path('productsearch/',views.ProfileSearch.as_view()),
+    path('post/',views.PostView.as_view()),
+    path('post/<int:pk>/',views.PostView.as_view()),
+    path('comment/',views.CommentView.as_view()),
+    path('commentlist/',views.CommentList.as_view()),
+    path('comment/<int:pk>/',views.CommentView.as_view()),
+    path('follow/',views.FollowView.as_view()),
+    path('follow/<int:user_id>/',views.FollowView.as_view()),
+    path('feed/',views.FeedView.as_view()),
+    path('FollowingListView/',views.FollowingListView.as_view())
+
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
