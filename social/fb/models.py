@@ -16,7 +16,6 @@ class Post(models.Model):
     captions = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     post_img = models.ImageField(upload_to='post_image',default='blank-profile-picture.png' )
-    likes = models.IntegerField(default=0)
     # def __str__(self):
     #     return f'Post by {self.user.username}'
 
@@ -39,5 +38,16 @@ class Follow(models.Model):
     
     def __str__(self):
         return f"{self.follower.username} follows {self.following.username}"
+
+class Like(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='likes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'post')
+
+    def __str__(self):
+        return f"{self.user.username} likes Post {self.post.id}"
 
     

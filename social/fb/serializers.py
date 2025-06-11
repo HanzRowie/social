@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Profile,Post,Comment,Follow
+from .models import Profile,Post,Comment,Follow,Like
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -60,9 +60,21 @@ class ProfileSerializer(serializers.ModelSerializer):
         return Profile.objects.create(**validated_data)
 
 class PostSerializer(serializers.ModelSerializer):
+    likes_count = serializers.SerializerMethodField()
+    is_liked_by_user = serializers.SerializerMethodField()
+
     class Meta:
         model = Post
-        fields = ['user','captions','created_at','post_img','likes']
+        fields = ['user','captions','created_at','post_img','likes_count','is_liked_by_user']
+
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
+    def get_is_liked_by_user(self, obj):
+        user = self.context.get('request').user
+        if user.is_authenticated:
+            return obj.likes.filter(user=user).exists()
+        return False
 
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -77,5 +89,11 @@ class FollowSerializer(serializers.ModelSerializer):
     class Meta:
         model = Follow
         fields = ['follower','following','created_at']
+
+class LikeSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    class Meta:
+        model = Like
+        fields = ['user', 'username', 'created_at']
 
     

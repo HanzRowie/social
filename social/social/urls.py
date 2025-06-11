@@ -1,4 +1,3 @@
-
 from django.contrib import admin
 from django.urls import path
 from fb import views
@@ -22,6 +21,8 @@ urlpatterns = [
     path('follow/',views.FollowView.as_view()),
     path('follow/<int:user_id>/',views.FollowView.as_view()),
     path('feed/',views.FeedView.as_view()),
-    path('FollowingListView/',views.FollowingListView.as_view())
+    path('FollowingListView/',views.FollowingListView.as_view()),
+    path('post/<int:post_id>/like/', views.LikeToggleView.as_view()),
+    path('post/<int:post_id>/likes/', views.PostLikesListView.as_view())
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

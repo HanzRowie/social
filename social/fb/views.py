@@ -1,9 +1,9 @@
 from django.shortcuts import render
-from .serializers import RegisterSerializer,LoginSerializer,ProfileSerializer,PostSerializer,CommentSerializer,FollowSerializer
+from .serializers import RegisterSerializer,LoginSerializer,ProfileSerializer,PostSerializer,CommentSerializer,FollowSerializer,LikeSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Profile,Post,Comment,Follow
+from .models import Profile,Post,Comment,Follow,Like
 from django.db.models import Q
 from django.core.paginator import Paginator
 from django.contrib.auth.models import User
@@ -123,10 +123,10 @@ class PostView(APIView):
         id = pk
         if id is not None:
             stu = Post.objects.get(pk = pk)
-            serializer = PostSerializer(stu)
+            serializer = PostSerializer(stu, context={'request': request})
             return Response(serializer.data)
         stu = Post.objects.all()
-        serializer = PostSerializer(stu)
+        serializer = PostSerializer(stu, many=True, context={'request': request})
         return Response(serializer.data)
     
     def post(self , request):
@@ -243,6 +243,31 @@ class FeedView(generics.ListAPIView):
         
         # Filter posts from the following users
         return Post.objects.filter(user__in=following_user_ids).order_by('-created_at')
+
+class LikeToggleView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, post_id):
+        user = request.user
+        try:
+            post = Post.objects.get(id=post_id)
+        except Post.DoesNotExist:
+            return Response({'detail': 'Post not found.'}, status=status.HTTP_404_NOT_FOUND)
+        like, created = Like.objects.get_or_create(user=user, post=post)
+        if not created:
+            like.delete()
+            return Response({'liked': False, 'message': 'Post unliked.'}, status=status.HTTP_200_OK)
+        return Response({'liked': True, 'message': 'Post liked.'}, status=status.HTTP_200_OK)
+
+class PostLikesListView(ListAPIView):
+    serializer_class = LikeSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        post_id = self.kwargs['post_id']
+        return Like.objects.filter(post_id=post_id)
 
       
 
