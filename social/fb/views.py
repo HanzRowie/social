@@ -92,30 +92,49 @@ class ProfileView(APIView):
             serializer.save()
             return Response({'msg': 'Data Created'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    def put(self,request,format = None,pk = None):
 
-        stu = Profile.objects.get(pk=pk)
-        serializer = ProfileSerializer(stu,data = request.data)
+class PersonalProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        try:
+            return Profile.objects.get(user=self.request.user)
+        except Profile.DoesNotExist:
+            return None
+
+    def get(self, request):
+        profile = self.get_object()
+        if not profile:
+            return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ProfileSerializer(profile)
+        return Response(serializer.data)
+
+    def put(self, request):
+        profile = self.get_object()
+        if not profile:
+            return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ProfileSerializer(profile, data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response({'msg': 'Data Updated'})
-        return Response(serializer.errors)
-    
-    def patch(self,request,format = None,pk=None):
-        
-        stu = Profile.objects.get(pk=pk)
-        serializer = ProfileSerializer(stu,data = request.data,partial = True)
+            serializer.save(user=request.user)
+            return Response({'msg': 'Profile updated successfully'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        profile = self.get_object()
+        if not profile:
+            return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ProfileSerializer(profile, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.save()
-            return Response({'msg': 'Data Updated'})
-        return Response(serializer.errors)
-    
-    def delete(self,request,pk = None):
-        pk = pk
-        stu = Profile.objects.get(pk=pk)
-        stu.delete()
-        return Response({'msg': 'Data deleted'})
+            serializer.save(user=request.user)
+            return Response({'msg': 'Profile updated successfully'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        profile = self.get_object()
+        if not profile:
+            return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        profile.delete()
+        return Response({'msg': 'Profile deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
     
     
 class PostView(APIView):

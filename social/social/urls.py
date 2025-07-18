@@ -23,6 +23,7 @@ urlpatterns = [
     path('feed/',views.FeedView.as_view()),
     path('FollowingListView/',views.FollowingListView.as_view()),
     path('post/<int:post_id>/like/', views.LikeToggleView.as_view()),
-    path('post/<int:post_id>/likes/', views.PostLikesListView.as_view())
+    path('post/<int:post_id>/likes/', views.PostLikesListView.as_view()),
+    path('PersonalProfileView/',views.PersonalProfileView.as_view()),
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

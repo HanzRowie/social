@@ -9,8 +9,12 @@ class ProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ['user','captions','created_at','post_img','likes']
-    
+    list_display = ['user', 'captions', 'created_at', 'post_img', 'total_likes']
+
+    def total_likes(self, obj):
+        return obj.likes.count()
+    total_likes.short_description = 'Likes'
+
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     list_display = ['post','user','captions','created_at']
