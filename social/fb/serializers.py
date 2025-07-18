@@ -80,6 +80,7 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['post', 'user', 'captions', 'created_at']
+        read_only_fields = ['user']
     
     def create(self, validated_data):
         # Create and return a new Comment instance, given the validated data

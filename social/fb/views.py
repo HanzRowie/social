@@ -200,47 +200,87 @@ class PostView(APIView):
 
 
 class CommentView(APIView):
-    def get(self,request,pk = None):
-        id = pk
-        if id is not None:
-            stu = Comment.objects.get(id =pk)
-            serializer = CommentSerializer(stu,data = request.data)
-            return Response(serializer.data)
-        stu = Comment.objects.all()
-        serializer =CommentSerializer(stu,data = request.data)
-        return Response(serializer.data)
-    
-    def post(self,request):
-        data = request.data
-        serializer = CommentSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'msg': 'Comment  successfully Posted'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    def put(self,request,pk = None):
-        id = pk
-        stu = Comment.objects.get(pk=pk)
-        serializer =  CommentSerializer(stu,data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'msg': 'Comment Successfully Updated'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    def patch(self,request,pk = None):
-        id = pk
-        stu = Comment.objects.get(id=pk)
-        serializer = CommentSerializer(stu,data = request.data,partial = True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'msg':"Comment Updated Successfully"},status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    def delete(self,request,pk =None):
-        id = pk
-        stu = Comment.objects.get(pk = pk)
-        stu.delete()
 
+
+    def get(self,request,pk = None):
+        if pk:
+            try:
+                comment = Comment.objects.get(pk=pk)
+                # Check if the user is allowed to view the comment
+                if (
+                    comment.user == request.user or
+                    comment.post.user == request.user or
+                    Follow.objects.filter(follower=request.user, following=comment.post.user).exists()
+                ):
+                    serializer = CommentSerializer(comment, context={'request': request})
+                    return Response(serializer.data)
+                else:
+                    return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+            except Comment.DoesNotExist:
+                return Response({'error': 'Comment not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # If no pk is provided, show all comments the user is allowed to see
+        followed_users = Follow.objects.filter(follower=request.user).values_list('following', flat=True)
+        allowed_posts = Post.objects.filter(user__in=list(followed_users) + [request.user.id])
+        comments = Comment.objects.filter(post__in=allowed_posts)
+        serializer = CommentSerializer(comments, many=True, context={'request': request})
+        return Response(serializer.data)
+      
+
+    def post(self, request):
+        serializer = CommentSerializer(data=request.data)
+        if serializer.is_valid():
+            post_id = request.data.get('post')
+            try:
+                post = Post.objects.get(id=post_id)
+                if post.user == request.user or \
+                   Follow.objects.filter(follower=request.user, following=post.user).exists():
+                    serializer.save(user=request.user)
+                    return Response({'msg': 'Comment successfully posted'}, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({'error': 'You are not allowed to comment on this post'}, status=status.HTTP_403_FORBIDDEN)
+            except Post.DoesNotExist:
+                return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+    def put(self, request, pk=None):
+        try:
+            comment = Comment.objects.get(pk=pk)
+            if comment.user != request.user:
+                return Response({'error': 'You are not allowed to edit this comment'}, status=status.HTTP_403_FORBIDDEN)
+            serializer = CommentSerializer(comment, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'msg': 'Comment successfully updated'}, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Comment.DoesNotExist:
+            return Response({'error': 'Comment not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    def patch(self, request, pk=None):
+        try:
+            comment = Comment.objects.get(pk=pk)
+            if comment.user != request.user:
+                return Response({'error': 'You are not allowed to edit this comment'}, status=status.HTTP_403_FORBIDDEN)
+            serializer = CommentSerializer(comment, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'msg': 'Comment successfully updated'}, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Comment.DoesNotExist:
+            return Response({'error': 'Comment not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, pk=None):
+        try:
+            comment = Comment.objects.get(pk=pk)
+            if comment.user != request.user:
+                return Response({'error': 'You are not allowed to delete this comment'}, status=status.HTTP_403_FORBIDDEN)
+            comment.delete()
+            return Response({'msg': 'Comment successfully deleted'}, status=status.HTTP_200_OK)
+        except Comment.DoesNotExist:
+            return Response({'error': 'Comment not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        
 class CommentList(ListAPIView):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
