@@ -138,46 +138,65 @@ class PersonalProfileView(APIView):
     
     
 class PostView(APIView):
-    def get(self,request,pk = None):
-        id = pk
-        if id is not None:
-            stu = Post.objects.get(pk = pk)
-            serializer = PostSerializer(stu, context={'request': request})
-            return Response(serializer.data)
-        stu = Post.objects.all()
-        serializer = PostSerializer(stu, many=True, context={'request': request})
+    def get(self, request, pk=None):
+        if pk:
+            try:
+                post = Post.objects.get(pk=pk)
+                if post.user == request.user or Follow.objects.filter(follower=request.user, following=post.user).exists():
+                    serializer = PostSerializer(post, context={'request': request})
+                    return Response(serializer.data)
+                else:
+                    return Response({'error': 'You are not allowed to view this post.'}, status=status.HTTP_403_FORBIDDEN)
+            except Post.DoesNotExist:
+                return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get current user's and followed users' posts
+        followed_users = Follow.objects.filter(follower=request.user).values_list('following', flat=True)
+        allowed_users = list(followed_users) + [request.user.id]
+        posts = Post.objects.filter(user__id__in=allowed_users).order_by('-created_at')
+        serializer = PostSerializer(posts, many=True, context={'request': request})
         return Response(serializer.data)
-    
+        
     def post(self , request):
-        data = request.data
-        serializer = PostSerializer(data = data)
+        serializer = PostSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response({'msg': 'Data  successfully Posted'}, status=status.HTTP_201_CREATED)
+            serializer.save(user = request.data)
+            
+            return Response({'msg': 'Data successfully posted'}, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     
     def put(self,request ,format = None,pk =None):
-        id = pk
-        stu = Post.objects.get(pk = pk)
-        serializer = PostSerializer(stu,data = request.data)
+        post = Post.objects.get(pk = pk)
+        if post.user != request.user:
+            return Response({'error': 'You are not allowed to edit this post.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = PostSerializer(post,data = request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({'msg': 'Post Successfully Updated'}, status=status.HTTP_201_CREATED)
+            return Response({'msg': 'Post successfully updated'}, status=status.HTTP_200_OK)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def patch(self,request,format = None ,pk =None):
-        id = pk
-        stu = Post.objects.get(pk = pk)
-        serializer = PostSerializer(stu,data = request.data,partial = True)
+        post = Post.objects.get(pk =pk)
+        if post.user != request.user:
+            return Response({'error': 'You are not allowed to edit this post.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = PostSerializer(post,data = request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({'msg':"Post Successfully Updated"},status=status.HTTP_201_CREATED)
-        return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+            return Response({'msg': 'Post successfully updated'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
     
     def delete(self,request,pk = None):
-        id = pk
-        stu = Post.objects.get(pk = pk)
-        stu.delete()
+      post = Post.objects.get(pk = pk)
+      if  post.user != request.user:
+        return Response({'error': 'You are not allowed to delete this post.'}, status=status.HTTP_403_FORBIDDEN)
+      post.delete()
+
+      return Response({'msg': 'Post deleted successfully'})
 
 
 class CommentView(APIView):
